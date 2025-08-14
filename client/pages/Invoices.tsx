@@ -1,10 +1,31 @@
 import { useState, useEffect } from "react"
-import { ColumnDef } from "@tanstack/react-table"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { 
+  Plus,
+  Search,
+  Filter,
+  MoreHorizontal,
+  Edit,
+  Trash2,
+  Eye,
   TrendingUp, 
   TrendingDown, 
   Users, 
@@ -13,8 +34,6 @@ import {
   Calendar,
   Loader2
 } from "lucide-react"
-import { DataTable } from "@/components/data-table"
-import { generateInvoiceData } from "@/lib/import-export"
 import { useNavigate } from "react-router-dom"
 
 interface Invoice {
@@ -41,6 +60,9 @@ interface Invoice {
 export default function Invoices() {
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [selectedInvoices, setSelectedInvoices] = useState<string[]>([])
+  const [searchQuery, setSearchQuery] = useState("")
+  const [filterType, setFilterType] = useState<string>("all")
   const navigate = useNavigate()
 
   // Fetch invoices from API
@@ -98,6 +120,49 @@ export default function Invoices() {
     pendingAmount: invoices.filter(inv => inv.status !== 'paid' && inv.status !== 'cancelled').reduce((sum, inv) => sum + inv.total, 0),
   }
 
+  const toggleInvoiceSelection = (invoiceId: number) => {
+    setSelectedInvoices(prev =>
+      prev.includes(invoiceId.toString())
+        ? prev.filter(id => id !== invoiceId.toString())
+        : [...prev, invoiceId.toString()]
+    )
+  }
+
+  const toggleSelectAll = () => {
+    setSelectedInvoices(prev =>
+      prev.length === filteredInvoices.length ? [] : filteredInvoices.map(i => i.id.toString())
+    )
+  }
+
+  const filteredInvoices = invoices.filter(invoice => {
+    const matchesSearch = invoice.customer_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         invoice.number.toLowerCase().includes(searchQuery.toLowerCase())
+    
+    const matchesFilter = filterType === "all" || invoice.status === filterType
+    
+    return matchesSearch && matchesFilter
+  })
+
+  const handleDeleteSelected = async () => {
+    if (selectedInvoices.length === 0 || !confirm(`Are you sure you want to delete ${selectedInvoices.length} invoices?`)) {
+      return
+    }
+
+    try {
+      for (const invoiceId of selectedInvoices) {
+        await fetch(`/api/invoices/${invoiceId}`, {
+          method: 'DELETE'
+        })
+      }
+      setSelectedInvoices([])
+      fetchInvoices() // Refresh the invoice list
+      alert('Selected invoices have been deleted successfully')
+    } catch (error) {
+      console.error('Error deleting invoices:', error)
+      alert('Failed to delete invoices')
+    }
+  }
+
   const getStatusColor = (status: string) => {
     const colors = {
       draft: "bg-gray-100 text-gray-700 dark:bg-gray-900/20 dark:text-gray-400",
@@ -109,66 +174,6 @@ export default function Invoices() {
     return colors[status as keyof typeof colors] || colors.draft
   }
 
-  const columns: ColumnDef<Invoice>[] = [
-    {
-      accessorKey: "number",
-      header: "Invoice",
-      cell: ({ row }) => (
-        <span className="font-mono text-sm font-medium">{row.getValue("number")}</span>
-      ),
-    },
-    {
-      accessorKey: "customer_name",
-      header: "Customer",
-      cell: ({ row }) => {
-        const invoice = row.original
-        return (
-          <div className="flex items-center gap-3">
-            <Avatar className="h-8 w-8">
-              <AvatarFallback>{invoice.customer_name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-            </Avatar>
-            <div>
-              <span className="font-medium">{invoice.customer_name}</span>
-              <div className="text-sm text-muted-foreground">{invoice.customer_email}</div>
-            </div>
-          </div>
-        )
-      },
-    },
-    {
-      accessorKey: "date",
-      header: "Date",
-      cell: ({ row }) => (
-        <span>{new Date(row.getValue("date")).toLocaleDateString()}</span>
-      ),
-    },
-    {
-      accessorKey: "total",
-      header: "Amount",
-      cell: ({ row }) => (
-        <span className="font-semibold">${(row.getValue("total") as number).toFixed(2)}</span>
-      ),
-    },
-    {
-      accessorKey: "due_date",
-      header: "Due Date",
-      cell: ({ row }) => (
-        <span>{new Date(row.getValue("due_date")).toLocaleDateString()}</span>
-      ),
-    },
-    {
-      accessorKey: "status",
-      header: "Status",
-      cell: ({ row }) => {
-        const invoice = row.original
-        return (
-          <Badge variant="secondary" className={getStatusColor(invoice.status)}>
-            {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
-          </Badge>
-        )
-      },
-    },
-  ]
 
   const handleAddInvoice = () => {
     navigate("/invoices/create")
@@ -210,21 +215,23 @@ export default function Invoices() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div>
           <h1 className="text-2xl font-semibold text-foreground">Invoices</h1>
-          <div className="flex -space-x-2">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <Avatar key={i} className="h-8 w-8 border-2 border-background">
-                <AvatarImage src="/placeholder.svg" />
-                <AvatarFallback>{i}</AvatarFallback>
-              </Avatar>
-            ))}
-          </div>
+          <p className="text-muted-foreground">Track and manage all your invoice transactions</p>
         </div>
-        <p className="text-sm text-muted-foreground sm:text-right">
-          Track and manage all your invoice transactions
-        </p>
+        <div className="flex items-center gap-2">
+          {selectedInvoices.length > 0 && (
+            <Button variant="destructive" size="sm" onClick={handleDeleteSelected}>
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete Selected ({selectedInvoices.length})
+            </Button>
+          )}
+          <Button size="sm" onClick={handleAddInvoice}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Invoice
+          </Button>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -278,29 +285,132 @@ export default function Invoices() {
         </Card>
       </div>
 
-      {/* Data Table */}
-      {isLoading ? (
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin" />
-          <span className="ml-2">Loading invoices...</span>
-        </div>
-      ) : (
-        <DataTable
-          columns={columns}
-          data={invoices}
-          title="Invoice Management"
-          description="Track and manage all your invoice transactions"
-          searchPlaceholder="Search invoices..."
-          onAdd={handleAddInvoice}
-          onEdit={handleEditInvoice}
-          onDelete={handleDeleteInvoice}
-          onView={handleViewInvoice}
-          exportConfig={{
-            filename: "invoices-export",
-            generateExportData: generateInvoiceData
-          }}
-        />
-      )}
+      {/* Invoices Table */}
+      <Card>
+        <CardHeader>
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <CardTitle>Invoices</CardTitle>
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Search invoices..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 w-full lg:w-60"
+                />
+              </div>
+              <Select value={filterType} onValueChange={setFilterType}>
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="draft">Draft</SelectItem>
+                  <SelectItem value="sent">Sent</SelectItem>
+                  <SelectItem value="paid">Paid</SelectItem>
+                  <SelectItem value="overdue">Overdue</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button variant="outline" size="sm">
+                <Filter className="mr-2 h-4 w-4" />
+                Filter
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="flex items-center justify-center h-64">
+              <Loader2 className="h-8 w-8 animate-spin" />
+              <span className="ml-2">Loading invoices...</span>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left p-4 w-12">
+                      <Checkbox 
+                        checked={selectedInvoices.length === filteredInvoices.length && filteredInvoices.length > 0}
+                        onCheckedChange={toggleSelectAll}
+                      />
+                    </th>
+                    <th className="text-left p-4 text-sm font-medium text-muted-foreground">Invoice</th>
+                    <th className="text-left p-4 text-sm font-medium text-muted-foreground">Customer</th>
+                    <th className="text-left p-4 text-sm font-medium text-muted-foreground">Date</th>
+                    <th className="text-left p-4 text-sm font-medium text-muted-foreground">Amount</th>
+                    <th className="text-left p-4 text-sm font-medium text-muted-foreground">Due Date</th>
+                    <th className="text-left p-4 text-sm font-medium text-muted-foreground">Status</th>
+                    <th className="text-left p-4 text-sm font-medium text-muted-foreground">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredInvoices.map((invoice) => (
+                    <tr key={invoice.id} className="border-b hover:bg-muted/50">
+                      <td className="p-4">
+                        <Checkbox 
+                          checked={selectedInvoices.includes(invoice.id.toString())}
+                          onCheckedChange={() => toggleInvoiceSelection(invoice.id)}
+                        />
+                      </td>
+                      <td className="p-4">
+                        <span className="font-mono text-sm font-medium">{invoice.number}</span>
+                      </td>
+                      <td className="p-4">
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-8 w-8">
+                            <AvatarFallback>{invoice.customer_name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <div className="font-medium">{invoice.customer_name}</div>
+                            <div className="text-sm text-muted-foreground">{invoice.customer_email}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-4 text-sm">{new Date(invoice.date).toLocaleDateString()}</td>
+                      <td className="p-4 text-sm font-medium">${invoice.total.toFixed(2)}</td>
+                      <td className="p-4 text-sm">{new Date(invoice.due_date).toLocaleDateString()}</td>
+                      <td className="p-4">
+                        <Badge variant="secondary" className={getStatusColor(invoice.status)}>
+                          {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
+                        </Badge>
+                      </td>
+                      <td className="p-4">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleViewInvoice(invoice)}>
+                              <Eye className="mr-2 h-4 w-4" />
+                              View
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleEditInvoice(invoice)}>
+                              <Edit className="mr-2 h-4 w-4" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              className="text-red-600"
+                              onClick={() => handleDeleteInvoice(invoice)}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }

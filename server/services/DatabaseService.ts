@@ -173,22 +173,19 @@ export class DatabaseService {
 
 
   static async createProduct(
-    product: Omit<Product, "id" | "created_at" | "updated_at">,
+    product: Omit<Product, "id" | "created_at" | "updated_at">
   ): Promise<ApiResponse<Product>> {
     try {
       const [result] = await pool.execute<ResultSetHeader>(
-        "INSERT INTO products (name, sku, description, category_id, price, cost, stock_quantity, min_stock_level, unit, barcode, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO products (name, sku, description, price, cost, stock_quantity, unit, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
         [
           product.name,
           product.sku,
           product.description,
-          product.category_id,
           product.price,
           product.cost,
           product.stock_quantity || 0,
-          product.min_stock_level || 0,
           product.unit || "pcs",
-          product.barcode,
           product.status || "active",
         ],
       );
@@ -215,18 +212,15 @@ export class DatabaseService {
   ): Promise<ApiResponse<Product>> {
     try {
       const [result] = await pool.execute<ResultSetHeader>(
-        "UPDATE products SET name = ?, sku = ?, description = ?, category_id = ?, price = ?, cost = ?, stock_quantity = ?, min_stock_level = ?, unit = ?, barcode = ?, status = ? WHERE id = ?",
+        "UPDATE products SET name = ?, sku = ?, description = ?, price = ?, cost = ?, stock_quantity = ?, unit = ?, status = ? WHERE id = ?",
         [
           product.name,
           product.sku,
           product.description,
-          product.category_id,
           product.price,
           product.cost,
           product.stock_quantity,
-          product.min_stock_level,
           product.unit,
-          product.barcode,
           product.status,
           id,
         ],

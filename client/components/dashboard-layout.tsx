@@ -50,6 +50,7 @@ import { Input } from "@/components/ui/input";
 import { useTheme } from "./theme-provider";
 import { NotificationPopup } from "./notification-popup";
 import { LanguageSelector } from "./language-selector";
+import { SidebarSubSidebar } from "@/components/ui/sidebar";
 
 interface NavigationItem {
   title: string;
@@ -59,7 +60,6 @@ interface NavigationItem {
 }
 
 const navigation: NavigationItem[] = [
-  
   {
     title: "Main",
     icon: LayoutDashboard,
@@ -232,8 +232,56 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     );
   };
 
+  // Sub-sidebar icons (vertical menu)
+  const subSidebarIcons = [
+    {
+      icon: <LayoutDashboard className="h-3 w-3" />,
+      label: "Dashboard",
+      onClick: () => {
+        window.location.href = "/";
+      },
+    },
+    {
+      icon: <Users className="h-3 w-3" />,
+      label: "Users",
+      onClick: () => {
+        window.location.href = "/customers";
+      },
+    },
+    {
+      icon: <FileText className="h-3 w-3" />,
+      label: "Invoices",
+      onClick: () => {
+        window.location.href = "/invoices";
+      },
+    },
+    {
+      icon: <Package className="h-3 w-3" />,
+      label: "Products",
+      onClick: () => {
+        window.location.href = "/inventory/products";
+      },
+    },
+    {
+      icon: <Settings className="h-3 w-3" />,
+      label: "Settings",
+      onClick: () => {
+        window.location.href = "/settings";
+      },
+    },
+  ];
+
   return (
     <div className="min-h-screen bg-background">
+      {/* Sub-sidebar (vertical icon bar) */}
+      <SidebarSubSidebar
+        className="hidden lg:flex p-2"
+        icons={subSidebarIcons}
+        onPlusClick={() => {
+          /* handle plus click if needed */
+        }}
+      />
+
       {/* Mobile sidebar backdrop */}
       {sidebarOpen && (
         <div
@@ -245,29 +293,28 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       {/* Sidebar */}
       <div
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-50 mx-12 border-l border-gray-300  bg-sidebar border-r border-sidebar-border transform transition-transform duration-300 ease-in-out lg:translate-x-0 overflow-hidden",
+          "fixed inset-y-0 left-14  z-50 w-50 border-l  border-gray-300  bg-sidebar border-r border-sidebar-border transform transition-transform duration-300 ease-in-out lg:translate-x-0 overflow-hidden ",
           sidebarOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
-        <div className="flex h-full flex-col">
+        <div className="flex h-full flex-col overflow-hidden">
           {/* Logo */}
-          <div className="flex h-16 items-center px-6 ">
+          <div className="flex h-14  items-center px-5 ">
             <div className="flex items-center gap-2">
               <img
-                src="https://cdn.builder.io/api/v1/image/assets%2Fb2b14d9d9af0432b82f77eecc1168878%2Ff8bc2155db8344b3b57796dec05e1a22?format=webp&width=800"
+                src="https://kanakku.dreamstechnologies.com/html/template/assets/img/logo.svg"
                 alt="Kanakku Logo"
                 className="h-20 w-20 object-contain"
               />
-            </div>            
+            </div>
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 overflow-y-auto p-4 space-y-4">
+          <nav className="flex-1 overflow-y-auto p-2 overflow-hidden  space-y-4">
             {navigation.map((item) => (
               <div key={item.title}>
                 {/* Section Title */}
-                <div className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-muted-foreground tracking-wider">
-                  
+                <div className="flex  items-center gap-2 px-3 py-2 text-xs font-semibold text-muted-foreground tracking-wider">
                   <span>{item.title}</span>
                 </div>
 
@@ -279,9 +326,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                         <div>
                           <Button
                             variant="ghost"
-                            className="w-full ml-4 text-xs font-semibold justify-between h-6 px-3 text-sidebar-foreground hover:bg-sidebar-accent border-l-2 border-sidebar-border border-l-blue-900 hover:text-sidebar-accent-foreground"
+                            className="w-full ml-4 text-xs font-semibold justify-between h-6 px-3 text-sidebar-foreground hover:bg-[#ffffff] border-l-2 border-sidebar-border border-l-blue-900 hover:text-sidebar-accent-foreground"
                             onClick={() => toggleExpanded(child.title)}
-                            
                           >
                             <div className="flex  items-center gap-2 w-8 border-sidebar-border">
                               <child.icon className="h-4 w-4" />
@@ -289,7 +335,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                             </div>
                             <ChevronDown
                               className={cn(
-                                "h-4 w-4 transition-transform",
+                                "h-4 w-4 transition-transform duration-0",
                                 expandedItems.includes(child.title)
                                   ? "rotate-180"
                                   : "",
@@ -303,9 +349,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                                   key={grandchild.href}
                                   to={grandchild.href!}
                                   className={cn(
-                                    "flex items-center m-0  px-3 py-2 h-6 text-xs transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground border-l-2 border-sidebar-border ",
+                                    "flex items-center m-0  px-3 py-2 h-6 text-xs transition-colors hover:bg-[#ffffff]hover:text-sidebar-accent-foreground border-l-2 border-sidebar-border hover:text-sidebar-accent-foreground ",
                                     location.pathname === grandchild.href
-                                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                                      ? " "
                                       : "text-sidebar-foreground",
                                   )}
                                 >
@@ -319,7 +365,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                         <Link
                           to={child.href!}
                           className={cn(
-                            " ml-4 h-6 flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground border-l-2 border-sidebar-border border-blue-900",
+                            " ml-4 h-6 flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground border-l-2 border-sidebar-border border-blue-900 hover:bg-[#ffffff]",
                             location.pathname === child.href
                               ? "bg-sidebar-primary text-sidebar-primary-foreground"
                               : "text-sidebar-foreground",
@@ -361,7 +407,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       </div>
 
       {/* Main content */}
-      <div className="lg:pl-64">
+      <div className="lg:pl-[16rem]">
         {/* Header */}
         <header className="sticky top-0 z-30 flex h-12 items-center gap-4 border-b bg-card px-4 lg:px-6 overflow-x-auto">
           <Button
@@ -380,7 +426,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           {/* Breadcrumb */}
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Home className="h-4 w-4" />
-            <span className=" font-semibold" >Home</span>
+            <span className=" font-semibold">Home</span>
             <span>/</span>
             <span className="text-foreground  font-semibold">
               {location.pathname === "/"

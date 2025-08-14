@@ -29,18 +29,11 @@ export interface Product {
   name: string
   sku: string
   description?: string
-  category_id?: number
-  category?: string // For UI compatibility
-  category_name?: string // From database join
   price: number
   cost?: number
   stock_quantity?: number
-  min_stock_level?: number
   unit?: string
-  barcode?: string
   status?: 'active' | 'inactive'
-  created_at?: Date
-  updated_at?: Date
   // UI compatibility fields
   sellingPrice?: number
   purchasePrice?: number

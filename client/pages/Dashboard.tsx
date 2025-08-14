@@ -354,9 +354,26 @@ const topSalesData = [
 export default function Dashboard() {
   return (
     <div className="space-y-6">
-      {/* Header with Greeting */}
-      <div className="ml-4 font-semibold">
-        Dashboard
+      {/* Header with Dashboard title and controls */}
+      <div className="flex items-center justify-between">
+        <div className="ml-4 font-semibold text-xl">
+          Dashboard
+        </div>
+        <div className="flex items-center gap-2 text-xs">
+          <div className="flex items-center gap-2 text-xs border h-7 p-2 text-muted-foreground">
+            <Calendar className="h-4 w-4" />
+            <span >14 Aug 25 - 14 Aug 25</span>
+          </div>
+          <Button className="bg-blue-600 hover:bg-blue-700 h-7 w-24 gap-0 font-semibold text-center text-xs  text-white">
+           
+            Create New
+            <ChevronDown className="h-4 w-4 " />
+          </Button>
+          <Button variant="outline" className="text-gray-700 h-7 text-xs ">
+            <Download className="h-4 w-4 mr-2" />
+            Export
+          </Button>
+        </div>
       </div>
       <div className="bg-gradient-to-r from-purple-600 to-blue-600 rounded p-6 text-white relative overflow-hidden">
         <div className="flex items-center justify-between">

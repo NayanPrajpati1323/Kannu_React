@@ -741,6 +741,54 @@ const SidebarMenuSubButton = React.forwardRef<
 });
 SidebarMenuSubButton.displayName = "SidebarMenuSubButton";
 
+// SubSidebar: Minimal vertical bar for left side (sub-sidebar)
+const SidebarSubSidebar = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement> & {
+    icons?: { icon: React.ReactNode; label: string; onClick?: () => void }[];
+    onPlusClick?: () => void;
+    logoUrl?: string;
+  }
+>(({ className, icons, onPlusClick, logoUrl, ...props }, ref) => {
+  return (
+    <div
+      ref={ref}
+      className={cn(
+        "fixed left-0 top-1 z-50 flex flex-col items-center bg-sidebar border-r border-sidebar-border h-screen w-13 py-4 justify-between",
+        className,
+      )}
+      {...props}  
+    >
+      {/* Plus Button at top */}
+      <button
+        className="pb-1 flex items-center justify-center h-7 w-7 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 text-white shadow-lg hover:scale-105 transition-transform"
+        onClick={onPlusClick}
+        aria-label="Add"
+        type="button"
+      >
+        <span className="text-l  text-center ">+</span>
+      </button>
+      
+      {/* Navigation Icons at bottom */}
+      <nav className="flex flex-col gap-4 mb-4">
+        {icons?.map((item, idx) => (
+          <button
+            key={item.label}
+            className="flex items-center justify-center h-3 w-10 rounded-lg hover:bg-sidebar-accent text-sidebar-foreground transition-colors"
+            title={item.label}
+            onClick={item.onClick}
+            type="button"
+            tabIndex={0}
+          >
+            {item.icon}
+          </button>
+        ))}
+      </nav>
+    </div>
+  );
+});
+SidebarSubSidebar.displayName = "SidebarSubSidebar";
+
 export {
   Sidebar,
   SidebarContent,
@@ -765,5 +813,6 @@ export {
   SidebarRail,
   SidebarSeparator,
   SidebarTrigger,
+  SidebarSubSidebar, // <-- export the new sub-sidebar
   useSidebar,
 };

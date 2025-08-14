@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react"
-import { ColumnDef } from "@tanstack/react-table"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   Dialog,
@@ -14,6 +14,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog"
 import {
   Select,
@@ -22,7 +23,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { 
+  Plus,
+  Search,
+  Filter,
+  MoreHorizontal,
+  Edit,
+  Trash2,
   Users, 
   UserPlus, 
   DollarSign,
@@ -32,8 +45,6 @@ import {
   MapPin,
   Loader2
 } from "lucide-react"
-import { DataTable } from "@/components/data-table"
-import { generateCustomerData } from "@/lib/import-export"
 
 interface Customer {
   id?: number
@@ -57,6 +68,9 @@ export default function Customers() {
   const [newCustomer, setNewCustomer] = useState<Partial<Customer>>({})
   const [isLoading, setIsLoading] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [selectedCustomers, setSelectedCustomers] = useState<string[]>([])
+  const [searchQuery, setSearchQuery] = useState("")
+  const [filterType, setFilterType] = useState<string>("all")
 
   // Fetch customers from API
   const fetchCustomers = async () => {
@@ -109,59 +123,54 @@ export default function Customers() {
   }, [])
 
 
+  const toggleCustomerSelection = (customerId: number) => {
+    setSelectedCustomers(prev =>
+      prev.includes(customerId.toString())
+        ? prev.filter(id => id !== customerId.toString())
+        : [...prev, customerId.toString()]
+    )
+  }
+
+  const toggleSelectAll = () => {
+    setSelectedCustomers(prev =>
+      prev.length === filteredCustomers.length ? [] : filteredCustomers.map(c => c.id!.toString())
+    )
+  }
+
+  const filteredCustomers = customers.filter(customer => {
+    const matchesSearch = customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         customer.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         customer.company?.toLowerCase().includes(searchQuery.toLowerCase())
+    
+    return matchesSearch
+  })
+
+  const handleDeleteSelected = async () => {
+    if (selectedCustomers.length === 0 || !confirm(`Are you sure you want to delete ${selectedCustomers.length} customers?`)) {
+      return
+    }
+
+    try {
+      for (const customerId of selectedCustomers) {
+        await fetch(`/api/customers/${customerId}`, {
+          method: 'DELETE'
+        })
+      }
+      setSelectedCustomers([])
+      fetchCustomers() // Refresh the customer list
+      alert('Selected customers have been deleted successfully')
+    } catch (error) {
+      console.error('Error deleting customers:', error)
+      alert('Failed to delete customers')
+    }
+  }
+
   const stats = {
     totalCustomers: customers.length,
     activeCustomers: customers.length, // All customers are considered active for now
     totalRevenue: 0, // Placeholder - would be calculated from invoices
     averageOrderValue: 0 // Placeholder - would be calculated from invoices
   }
-
-  const columns: ColumnDef<Customer>[] = [
-    {
-      accessorKey: "name",
-      header: "Customer",
-      cell: ({ row }) => {
-        const customer = row.original
-        return (
-          <div className="flex items-center gap-3">
-            <Avatar className="h-10 w-10">
-              <AvatarFallback>{customer.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-            </Avatar>
-            <div>
-              <div className="font-medium">{customer.name}</div>
-              <div className="text-sm text-muted-foreground">{customer.email}</div>
-            </div>
-          </div>
-        )
-      },
-    },
-    {
-      accessorKey: "company",
-      header: "Company",
-    },
-    {
-      accessorKey: "phone",
-      header: "Phone",
-      cell: ({ row }) => (
-        <span className="font-mono text-sm">{row.getValue("phone")}</span>
-      ),
-    },
-    {
-      accessorKey: "city",
-      header: "City",
-    },
-    {
-      accessorKey: "country",
-      header: "Country",
-    },
-    {
-      accessorKey: "created_at",
-      header: "Created",
-      cell: ({ row }) => (
-        <span className="text-sm">{new Date(row.getValue("created_at")).toLocaleDateString()}</span>
-      ),
-    },
-  ]
 
   const handleAddCustomer = async () => {
     if (!newCustomer.name) {
@@ -297,9 +306,30 @@ export default function Customers() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-semibold text-foreground">Customers</h1>
-        <p className="text-muted-foreground">Manage your customer relationships and data</p>
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold text-foreground">Customers</h1>
+          <p className="text-muted-foreground">Manage your customer relationships and data</p>
+        </div>
+        <div className="flex items-center gap-2">
+          {selectedCustomers.length > 0 && (
+            <Button variant="destructive" size="sm" onClick={handleDeleteSelected}>
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete Selected ({selectedCustomers.length})
+            </Button>
+          )}
+          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm" onClick={() => {
+                setEditingCustomer(null)
+                setNewCustomer({})
+              }}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Customer
+              </Button>
+            </DialogTrigger>
+          </Dialog>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -350,26 +380,107 @@ export default function Customers() {
         </Card>
       </div>
 
-      {/* Data Table */}
-      <DataTable
-        columns={columns}
-        data={customers}
-        title="Customer Management"
-        description="Manage your customer relationships and data"
-        searchPlaceholder="Search customers..."
-        onAdd={() => {
-          setEditingCustomer(null)
-          setNewCustomer({})
-          setIsAddDialogOpen(true)
-        }}
-        onEdit={handleEditCustomer}
-        onDelete={handleDeleteCustomer}
-        onView={handleViewCustomer}
-        exportConfig={{
-          filename: "customers-export",
-          generateExportData: generateCustomerData
-        }}
-      />
+      {/* Customers Table */}
+      <Card>
+        <CardHeader>
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <CardTitle>Customers</CardTitle>
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Search customers..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 w-full lg:w-60"
+                />
+              </div>
+              <Button variant="outline" size="sm">
+                <Filter className="mr-2 h-4 w-4" />
+                Filter
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="flex items-center justify-center h-64">
+              <Loader2 className="h-8 w-8 animate-spin" />
+              <span className="ml-2">Loading customers...</span>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left p-4 w-12">
+                      <Checkbox 
+                        checked={selectedCustomers.length === filteredCustomers.length && filteredCustomers.length > 0}
+                        onCheckedChange={toggleSelectAll}
+                      />
+                    </th>
+                    <th className="text-left p-4 text-sm font-medium text-muted-foreground">Customer</th>
+                    <th className="text-left p-4 text-sm font-medium text-muted-foreground">Company</th>
+                    <th className="text-left p-4 text-sm font-medium text-muted-foreground">Phone</th>
+                    <th className="text-left p-4 text-sm font-medium text-muted-foreground">Location</th>
+                    <th className="text-left p-4 text-sm font-medium text-muted-foreground">Created</th>
+                    <th className="text-left p-4 text-sm font-medium text-muted-foreground">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredCustomers.map((customer) => (
+                    <tr key={customer.id} className="border-b hover:bg-muted/50">
+                      <td className="p-4">
+                        <Checkbox 
+                          checked={selectedCustomers.includes(customer.id!.toString())}
+                          onCheckedChange={() => toggleCustomerSelection(customer.id!)}
+                        />
+                      </td>
+                      <td className="p-4">
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-10 w-10">
+                            <AvatarFallback>{customer.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <div className="font-medium">{customer.name}</div>
+                            <div className="text-sm text-muted-foreground">{customer.email}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-4 text-sm">{customer.company || '-'}</td>
+                      <td className="p-4 text-sm font-mono">{customer.phone || '-'}</td>
+                      <td className="p-4 text-sm">{customer.city && customer.country ? `${customer.city}, ${customer.country}` : customer.city || customer.country || '-'}</td>
+                      <td className="p-4 text-sm">{customer.created_at ? new Date(customer.created_at).toLocaleDateString() : '-'}</td>
+                      <td className="p-4">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleEditCustomer(customer)}>
+                              <Edit className="mr-2 h-4 w-4" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              className="text-red-600"
+                              onClick={() => handleDeleteCustomer(customer)}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Add/Edit Customer Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>

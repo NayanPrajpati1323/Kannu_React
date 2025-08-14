@@ -36,6 +36,8 @@ import {
   ChevronRight,
   FileText
 } from "lucide-react"
+import { Checkbox } from "@/components/ui/checkbox"
+import { CardHeader, CardTitle } from "@/components/ui/card"
 import { exportToExcel, exportToPDF, generateCustomerData } from "@/lib/import-export"
 
 interface Quotation {
@@ -62,6 +64,7 @@ export default function Quotations() {
   const navigate = useNavigate()
   const [quotations, setQuotations] = useState<Quotation[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [selectedQuotations, setSelectedQuotations] = useState<string[]>([])
 
   // Fetch quotations from API
   const fetchQuotations = async () => {
@@ -145,12 +148,46 @@ export default function Quotations() {
     }
   }
 
+  const toggleQuotationSelection = (quotationId: number) => {
+    setSelectedQuotations(prev =>
+      prev.includes(quotationId.toString())
+        ? prev.filter(id => id !== quotationId.toString())
+        : [...prev, quotationId.toString()]
+    )
+  }
+
+  const toggleSelectAll = () => {
+    setSelectedQuotations(prev =>
+      prev.length === filteredQuotations.length ? [] : filteredQuotations.map(q => q.id.toString())
+    )
+  }
+
   const filteredQuotations = quotations.filter(quotation => {
     const matchesSearch = quotation.customer_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          quotation.number.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesStatus = statusFilter === "all" || quotation.status.toLowerCase() === statusFilter.toLowerCase()
     return matchesSearch && matchesStatus
   })
+
+  const handleDeleteSelected = async () => {
+    if (selectedQuotations.length === 0 || !confirm(`Are you sure you want to delete ${selectedQuotations.length} quotations?`)) {
+      return
+    }
+
+    try {
+      for (const quotationId of selectedQuotations) {
+        await fetch(`/api/quotations/${quotationId}`, {
+          method: 'DELETE'
+        })
+      }
+      setSelectedQuotations([])
+      fetchQuotations() // Refresh the quotation list
+      alert('Selected quotations have been deleted successfully')
+    } catch (error) {
+      console.error('Error deleting quotations:', error)
+      alert('Failed to delete quotations')
+    }
+  }
 
   const paginatedQuotations = filteredQuotations.slice(
     (currentPage - 1) * itemsPerPage,
@@ -216,11 +253,18 @@ export default function Quotations() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-foreground">Quotations</h1>
+          <p className="text-muted-foreground">Track and manage your quotation proposals</p>
         </div>
         <div className="flex items-center gap-2">
+          {selectedQuotations.length > 0 && (
+            <Button variant="destructive" size="sm" onClick={handleDeleteSelected}>
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete Selected ({selectedQuotations.length})
+            </Button>
+          )}
           <Button variant="outline" size="sm" onClick={handleExport}>
             <Download className="mr-2 h-4 w-4" />
             Export
